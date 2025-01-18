@@ -8,6 +8,8 @@ enum Route {
     Home {},
     #[route("/blog/:id")]
     Blog { id: i32 },
+    #[route("/containers")]
+    Containers {}
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -97,4 +99,14 @@ fn Navbar() -> Element {
 
         Outlet::<Route> {}
     }
+}
+
+#[component]
+pub fn Containers() -> Element {
+    rsx! {
+            div {
+                class: "container mx-auto p-4",
+                h1 { class: "text-2xl font-bold mb-4", "Docker Containers" }
+            }
+        }
 }

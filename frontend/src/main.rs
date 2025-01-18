@@ -1,5 +1,14 @@
 use dioxus::prelude::*;
 
+use reqwest;
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ApiResponse {
+    message: String,
+   docker_info: Option<serde_json::Value>
+}
+
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -103,10 +112,32 @@ fn Navbar() -> Element {
 
 #[component]
 pub fn Containers() -> Element {
-    rsx! {
-            div {
-                class: "container mx-auto p-4",
-                h1 { class: "text-2xl font-bold mb-4", "Docker Containers" }
-            }
+    let mut contents = use_signal(|| "".to_string());
+    let get_docker_info =move |_| async move {
+        let response = reqwest::get("http://127.0.0.1:8081/docker_info")
+            .await
+            .unwrap()
+            .json::<ApiResponse>()
+            .await
+			.unwrap();
+
+            let message = match &response.docker_info {
+                Some(info) => format!("{}", serde_json::to_string_pretty(info).unwrap_or("None".to_string())),
+                None => "None".to_string()
+           };
+          contents.set(message);
+    };
+
+   rsx! {
+       div {
+           "Message from server: "
+           pre {
+            "{contents}"
+           }
+       }
+        button {
+            onclick: get_docker_info,
+            "Get Docker Info"
         }
+    }
 }

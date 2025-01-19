@@ -25,6 +25,7 @@ enum Route {
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
+const CONTAINERS_CSS: Asset = asset!("/assets/styling/containers.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 fn main() {
@@ -36,6 +37,7 @@ fn App() -> Element {
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
+        document::Link { rel: "stylesheet", href: CONTAINERS_CSS }
         Router::<Route> {}
     }
 }
@@ -145,7 +147,7 @@ pub fn DockerInfo() -> Element {
 
 #[component]
 pub fn Containers() -> Element {
-    let mut contents = use_signal(|| "".to_string());
+    let mut containers = use_signal(|| None as Option<Vec<serde_json::Value>>);
     let get_containers = move |_| async move {
         let response = reqwest::get("http://127.0.0.1:8081/containers")
             .await
@@ -154,23 +156,44 @@ pub fn Containers() -> Element {
             .await
             .unwrap();
 
-        let message = match &response.containers {
-            Some(containers) => format!("{}", serde_json::to_string_pretty(containers).unwrap_or("None".to_string())),
-            None => "No containers found".to_string()
-        };
-        contents.set(message);
+        containers.set(response.containers.map(|c| c.as_array().unwrap().clone()));
     };
 
     rsx! {
         div {
-            "Containers: "
-            pre {
-                "{contents}"
+            class: "container-list",
+            h2 { "Docker Containers" }
+            button {
+                onclick: get_containers,
+                "Refresh Containers"
             }
-        }
-        button {
-            onclick: get_containers,
-            "Get Containers"
+            if let Some(containers) = containers() {
+                table {
+                    class: "container-table",
+                    thead {
+                        tr {
+                            th { "ID" }
+                            th { "Name" }
+                            th { "Image" }
+                            th { "Status" }
+                            // th { "Created" }
+                        }
+                    }
+                    tbody {
+                        for container in containers {
+                            tr {
+                                // td { "{container["Id"].as_str().unwrap_or("").chars().take(12).collect::<String>()}" }
+                                // td { "{container["Names"].as_array().unwrap_or(&vec![]).first().unwrap_or(&serde_json::Value::String("".to_string())).as_str().unwrap_or("")}" }
+                                // td { "{container["Image"].as_str().unwrap_or("")}" }
+                                // td { "{container["Status"].as_str().unwrap_or("")}" }
+                                // td { "{container["Created"].as_i64().map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap().format("%Y-%m-%d %H:%M:%S").to_string()).unwrap_or("".to_string())}" }
+                            }
+                        }
+                    }
+                }
+            } else {
+                p { "No containers found" }
+            }
         }
     }
 }

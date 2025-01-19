@@ -11,3 +11,4 @@ bollard = "*"
 actix-web = "4"
 serde = { version = "1.0.217", features = ["derive"] }
 actix-cors = "0.7.0"
+lazy_static = "1.4.0"

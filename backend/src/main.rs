@@ -5,6 +5,25 @@ use bollard::container::ListContainersOptions;
 use serde::{Serialize, Deserialize};
 use std::fmt;
 use std::error::Error as StdError;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref DOCKER: Docker = {
+        let docker_host = std::env::var("DOCKER_HOST").unwrap_or("unix:///var/run/docker.sock".to_string());
+        match docker_host.starts_with("unix://") {
+            true => Docker::connect_with_socket(
+                &docker_host[7..],
+                120,
+                API_DEFAULT_VERSION,
+            ).expect("Failed to connect to Docker socket"),
+            false => Docker::connect_with_http(
+                &docker_host,
+                5,
+                API_DEFAULT_VERSION,
+            ).expect("Failed to connect to Docker HTTP")
+        }
+    };
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ApiResponse {
@@ -43,24 +62,7 @@ async fn hello() -> impl Responder {
 }
 
 async fn docker_info() -> impl Responder {
-    let docker_host = std::env::var("DOCKER_HOST").unwrap_or("unix:///var/run/docker.sock".to_string());
-    let docker = match docker_host.starts_with("unix://") {
-        true => {
-            Docker::connect_with_socket(
-                &docker_host[7..],
-                120,
-                API_DEFAULT_VERSION,
-            ).map_err(MyError)?
-        }
-        false => {
-            Docker::connect_with_http(
-                &docker_host,
-                5,
-                API_DEFAULT_VERSION,
-             ).map_err(MyError)?
-        }
-    };
-    let info = docker.info().await.map_err(MyError)?;
+    let info = DOCKER.info().await.map_err(MyError)?;
     Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse{
         message: "Docker Info".to_string(),
         docker_info: Some(info),
@@ -69,30 +71,12 @@ async fn docker_info() -> impl Responder {
 }
 
 async fn get_containers() -> impl Responder {
-    let docker_host = std::env::var("DOCKER_HOST").unwrap_or("unix:///var/run/docker.sock".to_string());
-    let docker = match docker_host.starts_with("unix://") {
-        true => {
-            Docker::connect_with_socket(
-                &docker_host[7..],
-                120,
-                API_DEFAULT_VERSION,
-            ).map_err(MyError)?
-        }
-        false => {
-            Docker::connect_with_http(
-                &docker_host,
-                5,
-                API_DEFAULT_VERSION,
-             ).map_err(MyError)?
-        }
-    };
-    
     let options = ListContainersOptions::<String> {
         all: true,
         ..Default::default()
     };
     
-    let containers = docker.list_containers(Some(options)).await.map_err(MyError)?;
+    let containers = DOCKER.list_containers(Some(options)).await.map_err(MyError)?;
     
     Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse{
         message: "Containers List".to_string(),

@@ -1,12 +1,34 @@
+use std::sync::Arc;
+
 use dioxus::prelude::*;
 use reqwest;
 use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
+use web_sys::console;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Clone)]
+struct Container {
+    #[serde(rename = "Id")]
+    id: String,
+    #[serde(rename = "Names")]
+    names: Vec<String>,
+    #[serde(rename = "Image")]
+    image: String,
+    #[serde(rename = "Status")]
+    status: String,
+     #[serde(rename = "Created")]
+    created: i64,
+    // Add more fields according to your JSON structure
+
+}
+
+
+#[derive(Serialize, Deserialize, Debug,Clone)]
 struct ApiResponse {
     message: String,
     docker_info: Option<serde_json::Value>,
-    containers: Option<serde_json::Value>,
+    // containers: Option<serde_json::Value>,
+    containers: Option<Vec<Container>>,
 }
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -147,7 +169,7 @@ pub fn DockerInfo() -> Element {
 
 #[component]
 pub fn Containers() -> Element {
-    let mut containers = use_signal(|| None as Option<Vec<serde_json::Value>>);
+    let mut containers = use_signal(|| None as Option<Vec<Container>>);
     let get_containers = move |_| async move {
         let response = reqwest::get("http://127.0.0.1:8081/containers")
             .await
@@ -156,8 +178,51 @@ pub fn Containers() -> Element {
             .await
             .unwrap();
 
-        containers.set(response.containers.map(|c| c.as_array().unwrap().clone()));
+
+        // match response.containers {
+        //     Some(a) => {
+        //         console::log_1(&format!("{:?}",a.len()).into());
+        //         for aa in a.iter() {
+        //             console::log_1(&format!("{:?}",aa.id).into());
+                    
+        //         }
+        //     }
+        //     None => todo!()
+        // }
+
+            let aaa = response.containers.map(|a| { 
+                // c.
+
+            //    let mut a =  c;
+            //    console::log_1(&format!("{:?}",a.len()).into());
+            //    for aa in a.iter() {
+            //     console::log_1(&format!("{:?}",aa.id).into());
+            //    }
+               
+                console::log_1(&format!("{:?}",a).into());
+
+               return a.clone();
+            
+            });
+            containers.set(aaa);
+
+        // containers.set(response.containers.clone().map(|c| c.as_array().unwrap().clone()));
     };
+
+    // containers.read();
+
+
+    // let mut containers: Resource<Option<Vec<Container>>> = use_resource(|| async move {
+    //     reqwest::get("http://127.0.0.1:8081/containers")
+    //     .await
+    //     .unwrap()
+    //     .json::<ApiResponse>()
+    //     .await
+    //     .unwrap()
+    //     .containers
+
+    // });
+
 
     rsx! {
         div {
@@ -167,7 +232,7 @@ pub fn Containers() -> Element {
                 onclick: get_containers,
                 "Refresh Containers"
             }
-            if let Some(containers) = containers() {
+            if let Some(ccc) = containers() {
                 table {
                     class: "container-table",
                     thead {
@@ -176,24 +241,24 @@ pub fn Containers() -> Element {
                             th { "Name" }
                             th { "Image" }
                             th { "Status" }
-                            // th { "Created" }
+                            th { "Created" }
                         }
                     }
                     tbody {
-                        for container in containers {
+                        for c in ccc.iter() {
+                           
                             tr {
-                                // td { "{container["Id"].as_str().unwrap_or("").chars().take(12).collect::<String>()}" }
-                                // td { "{container["Names"].as_array().unwrap_or(&vec![]).first().unwrap_or(&serde_json::Value::String("".to_string())).as_str().unwrap_or("")}" }
-                                // td { "{container["Image"].as_str().unwrap_or("")}" }
-                                // td { "{container["Status"].as_str().unwrap_or("")}" }
-                                // td { "{container["Created"].as_i64().map(|t| chrono::DateTime::from_timestamp(t, 0).unwrap().format("%Y-%m-%d %H:%M:%S").to_string()).unwrap_or("".to_string())}" }
-                            }
+                                td { "{c.id}" }
+                                td { "{c.names[0]}" }
+                                td { "{c.image}" }
+                                td { "{c.status}" }
+                                td { "{c.created}" }
+                             }
                         }
                     }
                 }
-            } else {
-                p { "No containers found" }
             }
+            
         }
     }
 }

@@ -6,6 +6,7 @@ use serde::{Serialize, Deserialize};
 use std::fmt;
 use std::error::Error as StdError;
 use lazy_static::lazy_static;
+use serde_json;
 
 lazy_static! {
     static ref DOCKER: Docker = {
@@ -29,7 +30,8 @@ lazy_static! {
 struct ApiResponse {
     message: String,
     docker_info: Option<SystemInfo>,
-    containers: Option<Vec<ContainerSummary>>,
+    // containers: Option<Vec<ContainerSummary>>,
+    containers: Option<serde_json::Value>,
 }
 
 #[derive(Debug)]
@@ -81,7 +83,7 @@ async fn get_containers() -> impl Responder {
     Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse{
         message: "Containers List".to_string(),
         docker_info: None,
-        containers: Some(containers),
+        containers: Some(serde_json::to_value(containers)?),
     }))
 }
 

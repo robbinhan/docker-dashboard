@@ -178,39 +178,14 @@ pub fn Containers() -> Element {
             .await
             .unwrap();
 
-
-        // match response.containers {
-        //     Some(a) => {
-        //         console::log_1(&format!("{:?}",a.len()).into());
-        //         for aa in a.iter() {
-        //             console::log_1(&format!("{:?}",aa.id).into());
-                    
-        //         }
-        //     }
-        //     None => todo!()
-        // }
-
             let aaa = response.containers.map(|a| { 
-                // c.
-
-            //    let mut a =  c;
-            //    console::log_1(&format!("{:?}",a.len()).into());
-            //    for aa in a.iter() {
-            //     console::log_1(&format!("{:?}",aa.id).into());
-            //    }
-               
-                console::log_1(&format!("{:?}",a).into());
-
-               return a.clone();
-            
+            return  a.iter().map(|x| Container{
+                id: x.id.chars().take(12).collect::<String>(),
+                ..x.clone()
+            }).collect();
             });
             containers.set(aaa);
-
-        // containers.set(response.containers.clone().map(|c| c.as_array().unwrap().clone()));
     };
-
-    // containers.read();
-
 
     // let mut containers: Resource<Option<Vec<Container>>> = use_resource(|| async move {
     //     reqwest::get("http://127.0.0.1:8081/containers")
@@ -242,6 +217,7 @@ pub fn Containers() -> Element {
                             th { "Image" }
                             th { "Status" }
                             th { "Created" }
+                            th { "Operater" }
                         }
                     }
                     tbody {
@@ -253,6 +229,10 @@ pub fn Containers() -> Element {
                                 td { "{c.image}" }
                                 td { "{c.status}" }
                                 td { "{c.created}" }
+                                td { 
+                                    button { name: "start"}
+                                    button { name: "stop"}
+                                 }
                              }
                         }
                     }

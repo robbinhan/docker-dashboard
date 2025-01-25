@@ -30,7 +30,6 @@ lazy_static! {
 struct ApiResponse {
     message: String,
     docker_info: Option<SystemInfo>,
-    // containers: Option<Vec<ContainerSummary>>,
     containers: Option<serde_json::Value>,
 }
 
@@ -61,6 +60,35 @@ async fn hello() -> impl Responder {
         docker_info: None,
         containers: None,
     })
+}
+
+async fn start_container(id: web::Path<String>) ->  impl Responder{
+    println!("starting: {}",id);
+    DOCKER.start_container::<String>(&id, None).await.map_err(MyError)?;
+    Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse {
+        message: format!("Container {} started", id),
+        docker_info: None,
+        containers: None,
+    }))
+}
+
+async fn stop_container(id: web::Path<String>) ->  impl Responder{
+    println!("stoping:{}",id);
+    DOCKER.stop_container(&id, None).await.map_err(MyError)?;
+    Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse {
+        message: format!("Container {} stopped", id),
+        docker_info: None,
+        containers: None,
+    }))
+}
+
+async fn restart_container(id: web::Path<String>) -> Result<impl Responder, actix_web::Error> {
+    DOCKER.restart_container(&id, None).await.map_err(MyError)?;
+    Ok(web::Json(ApiResponse {
+        message: format!("Container {} restarted", id),
+        docker_info: None,
+        containers: None,
+    }))
 }
 
 async fn docker_info() -> impl Responder {
@@ -100,6 +128,9 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(hello))
             .route("/docker_info", web::get().to(docker_info))
             .route("/containers", web::get().to(get_containers))
+            .route("/container/{id}/start", web::post().to(start_container))
+            .route("/container/{id}/stop", web::post().to(stop_container)) 
+            .route("/container/{id}/restart", web::post().to(restart_container))
     })
     .bind(("127.0.0.1", 8081))?
     .run()

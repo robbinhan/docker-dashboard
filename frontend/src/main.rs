@@ -36,9 +36,6 @@ struct ApiResponse {
 enum Route {
     #[layout(Navbar)]
     #[route("/")]
-    Home {},
-    #[route("/blog/:id")]
-    Blog { id: i32 },
     #[route("/docker-info")]
     DockerInfo {},
     #[route("/containers")]
@@ -65,64 +62,13 @@ fn App() -> Element {
     }
 }
 
-#[component]
-pub fn Hero() -> Element {
-    rsx! {
-        div {
-            id: "hero",
-            img { src: HEADER_SVG, id: "header" }
-            div { id: "links",
-                a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
-                a { href: "https://dioxuslabs.com/awesome", "🚀 Awesome Dioxus" }
-                a { href: "https://github.com/dioxus-community/", "📡 Community Libraries" }
-                a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
-                a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
-                a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
-            }
-        }
-    }
-}
 
-#[component]
-fn Home() -> Element {
-    rsx! {
-        Hero {}
-    }
-}
-
-#[component]
-pub fn Blog(id: i32) -> Element {
-    rsx! {
-        div {
-            id: "blog",
-            h1 { "This is blog #{id}!" }
-            p { "In blog #{id}, we show how the Dioxus router works and how URL parameters can be passed as props to our route components." }
-            Link {
-                to: Route::Blog { id: id - 1 },
-                "Previous"
-            }
-            span { " <---> " }
-            Link {
-                to: Route::Blog { id: id + 1 },
-                "Next"
-            }
-        }
-    }
-}
 
 #[component]
 fn Navbar() -> Element {
     rsx! {
         div {
             id: "navbar",
-            Link {
-                to: Route::Home {},
-                "Home"
-            }
-            Link {
-                to: Route::Blog { id: 1 },
-                "Blog"
-            }
             Link {
                 to: Route::DockerInfo {},
                 "Docker Info"
@@ -170,9 +116,9 @@ pub fn DockerInfo() -> Element {
 
 #[component]
 pub fn Containers() -> Element {
-    let mut containers = use_signal(|| None as Option<Vec<Container>>);
-    let get_containers = move |_| async move {
-        let response = reqwest::get("http://127.0.0.1:8081/containers")
+    // let mut containers = use_signal(|| None as Option<Vec<Container>>);
+    let mut get_containers = use_resource(move|| async move {
+        let  response = reqwest::get("http://127.0.0.1:8081/containers")
             .await
             .unwrap()
             .json::<ApiResponse>()
@@ -180,84 +126,100 @@ pub fn Containers() -> Element {
             .unwrap();
 
             let aaa = response.containers.map(|a| { 
-            return  a.iter().map(|x| Container{
-                id: x.id.chars().take(12).collect::<String>(),
-                ..x.clone()
-            }).collect();
+                return a.iter().map(|x| Container{
+                    id: x.id.chars().take(12).collect::<String>(),
+                    ..x.clone()
+                }).collect::<Vec<Container>>();
             });
-            containers.set(aaa);
+            // containers.set(aaa);
+            return aaa;
+    });
+
+    // for bb in get_containers.read_unchecked().as_ref().unwrap().iter() {
+    //     for bbb in bb.iter() {
+    //         println!("{}",bbb.id);
+    //     }
+    // }
+
+    let  start_container = move |id:String| async move {
+        let _ = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:8081/container/{}/start", id))
+            .send()
+            .await;
+        get_containers.restart();
     };
 
-    // let mut containers: Resource<Option<Vec<Container>>> = use_resource(|| async move {
-    //     reqwest::get("http://127.0.0.1:8081/containers")
-    //     .await
-    //     .unwrap()
-    //     .json::<ApiResponse>()
-    //     .await
-    //     .unwrap()
-    //     .containers
-
-    // });
-
+    let  stop_container = move |id:String| async move {
+        let _ = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:8081/container/{}/stop", id))
+            .send()
+            .await;
+        get_containers.restart();
+    };
 
     rsx! {
         div {
             class: "container-list",
             h2 { "Docker Containers" }
-            button {
-                onclick: get_containers,
-                "Refresh Containers"
-            }
-            if let Some(ccc) = containers() {
-                table {
-                    class: "container-table",
-                    thead {
-                        tr {
-                            th { "ID" }
-                            th { "Name" }
-                            th { "Image" }
-                            th { "Status" }
-                            th { "Created" }
-                            th { "Operater" }
-                        }
-                    }
-                    tbody {
-                        for c in ccc.iter() {
-                           
+
+            match &*get_containers.read_unchecked() {
+                Some(ccc) => rsx! {
+                    table {
+                        class: "container-table",
+                        thead {
                             tr {
-                                td { "{c.id}" }
-                                td { "{c.names[0]}" }
-                                td { "{c.image}" }
-                                td { "{c.status}" }
-                                td { "{c.created}" }
-                                td { 
-                                    div { class: "operation-buttons",
-                                        button { 
-                                            class: "operation-button",
-                                            name: "Start",
-                                            i { class: "bi bi-play-fill" }
-                                            " Start"
-                                        }
-                                        button { 
-                                            class: "operation-button",
-                                            name: "Stop",
-                                            i { class: "bi bi-stop-fill" }
-                                            " Stop"
-                                        }
-                                        button { 
-                                            class: "operation-button delete",
-                                            name: "Restart",
-                                            i { class: "bi bi-arrow-clockwise" }
-                                            " Restart"
+                                th { "ID" }
+                                th { "Name" }
+                                th { "Image" }
+                                th { "Status" }
+                                th { "Created" }
+                                th { "Operater" }
+                            }
+                        }
+                        tbody {
+                            for c in ccc.as_ref().unwrap().iter() {
+                                {
+                                    let  c_id = c.id.clone();
+                                    let  c_id2 = c.id.clone();
+                                    // let  c_id3 = c.id.clone();
+                                    rsx! {
+                                        tr {
+                                            td { "{c.id}" }
+                                            td { "{c.names[0]}" }
+                                            td { "{c.image}" }
+                                            td { "{c.status}" }
+                                            td { "{c.created}" }
+                                            td { 
+                                                div { class: "operation-buttons",
+                                                    button { 
+                                                        onclick: move |_| start_container(c_id.to_string()) ,
+                                                        id: "button-start",
+                                                        class: "operation-button",
+                                                        name: "Start",
+                                                        i { class: "bi bi-play-fill" }
+                                                        " Start"
+                                                    },
+                                                    button { 
+                                                        onclick: move |_| stop_container(c_id2.to_string()) ,
+                                                        class: "operation-button",
+                                                        name: "Stop",
+                                                        i { class: "bi bi-stop-fill" }
+                                                        " Stop"
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
-                                 }
-                             }
+
+                                }
+                            }
                         }
                     }
-                }
+                },
+                None => rsx! {
+                    div { "Loading dogs..." }
+                },
             }
-            
         }
     }
 }

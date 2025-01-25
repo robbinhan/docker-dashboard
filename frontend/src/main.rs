@@ -60,6 +60,7 @@ fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: CONTAINERS_CSS }
+        document::Link { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" }
         Router::<Route> {}
     }
 }
@@ -230,8 +231,26 @@ pub fn Containers() -> Element {
                                 td { "{c.status}" }
                                 td { "{c.created}" }
                                 td { 
-                                    button { name: "start"}
-                                    button { name: "stop"}
+                                    div { class: "operation-buttons",
+                                        button { 
+                                            class: "operation-button",
+                                            name: "Start",
+                                            i { class: "bi bi-play-fill" }
+                                            " Start"
+                                        }
+                                        button { 
+                                            class: "operation-button",
+                                            name: "Stop",
+                                            i { class: "bi bi-stop-fill" }
+                                            " Stop"
+                                        }
+                                        button { 
+                                            class: "operation-button delete",
+                                            name: "Restart",
+                                            i { class: "bi bi-arrow-clockwise" }
+                                            " Restart"
+                                        }
+                                    }
                                  }
                              }
                         }

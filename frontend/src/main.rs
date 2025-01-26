@@ -1,10 +1,18 @@
 use std::sync::Arc;
+use std::env;
 
 use dioxus::prelude::*;
 use reqwest;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use web_sys::console;
+use dotenv::dotenv;
+
+fn get_api_url(path: &str) -> String {
+    let base_url = env::var("API_BASE_URL")
+        .expect("API_BASE_URL must be set in .env file");
+    format!("{}{}", base_url, path)
+}
 
 #[derive(Serialize, Deserialize, Debug,Clone)]
 struct Container {
@@ -48,6 +56,7 @@ const CONTAINERS_CSS: Asset = asset!("/assets/styling/containers.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 fn main() {
+    dotenv().ok();
     dioxus::launch(App);
 }
 
@@ -86,7 +95,7 @@ fn Navbar() -> Element {
 pub fn DockerInfo() -> Element {
     let mut contents = use_signal(|| "".to_string());
     let get_docker_info = move |_| async move {
-        let response = reqwest::get("http://127.0.0.1:8081/docker_info")
+        let response = reqwest::get(get_api_url("/docker_info"))
             .await
             .unwrap()
             .json::<ApiResponse>()
@@ -118,7 +127,7 @@ pub fn DockerInfo() -> Element {
 pub fn Containers() -> Element {
     // let mut containers = use_signal(|| None as Option<Vec<Container>>);
     let mut get_containers = use_resource(move|| async move {
-        let  response = reqwest::get("http://127.0.0.1:8081/containers")
+        let  response = reqwest::get(get_api_url("/containers"))
             .await
             .unwrap()
             .json::<ApiResponse>()
@@ -143,7 +152,7 @@ pub fn Containers() -> Element {
 
     let  start_container = move |id:String| async move {
         let _ = reqwest::Client::new()
-            .post(format!("http://127.0.0.1:8081/container/{}/start", id))
+            .post(get_api_url(&format!("/container/{}/start", id)))
             .send()
             .await;
         get_containers.restart();
@@ -151,7 +160,7 @@ pub fn Containers() -> Element {
 
     let  stop_container = move |id:String| async move {
         let _ = reqwest::Client::new()
-            .post(format!("http://127.0.0.1:8081/container/{}/stop", id))
+            .post(get_api_url(&format!("/container/{}/stop", id)))
             .send()
             .await;
         get_containers.restart();

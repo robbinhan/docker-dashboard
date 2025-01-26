@@ -1,6 +1,8 @@
 use actix_web::{web, App, HttpServer, Responder, error::ResponseError, http::StatusCode, http::header};
+use dotenv::dotenv;
+use std::env;
 use actix_cors::Cors;
-use bollard::{Docker, API_DEFAULT_VERSION, models::{SystemInfo, ContainerSummary}};
+use bollard::{Docker, API_DEFAULT_VERSION, models::{SystemInfo}};
 use bollard::container::ListContainersOptions;
 use serde::{Serialize, Deserialize};
 use std::fmt;
@@ -117,6 +119,12 @@ async fn get_containers() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8081".to_string())
+        .parse::<u16>()
+        .expect("PORT must be a valid number");
+        
     HttpServer::new(|| {
         let cors = Cors::default()
               .allowed_origin("http://127.0.0.1:8080")
@@ -132,7 +140,7 @@ async fn main() -> std::io::Result<()> {
             .route("/container/{id}/stop", web::post().to(stop_container)) 
             .route("/container/{id}/restart", web::post().to(restart_container))
     })
-    .bind(("127.0.0.1", 8081))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }

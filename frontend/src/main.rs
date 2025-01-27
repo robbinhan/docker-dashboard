@@ -9,8 +9,7 @@ use web_sys::console;
 use dotenv::dotenv;
 
 fn get_api_url(path: &str) -> String {
-    let base_url = env::var("API_BASE_URL")
-        .expect("API_BASE_URL must be set in .env file");
+    let base_url = env!("API_BASE_URL");
     format!("{}{}", base_url, path)
 }
 
@@ -26,6 +25,8 @@ struct Container {
     status: String,
      #[serde(rename = "Created")]
     created: i64,
+    #[serde(rename = "Service")]
+    service: String,
     // Add more fields according to your JSON structure
 
 }
@@ -160,7 +161,7 @@ pub fn Containers() -> Element {
 
     let  stop_container = move |id:String| async move {
         let _ = reqwest::Client::new()
-            .post(get_api_url(&format!("/container/{}/stop", id)))
+            .post(format!("http://127.0.0.1:8081/container/{}/stop", id))
             .send()
             .await;
         get_containers.restart();
@@ -178,6 +179,7 @@ pub fn Containers() -> Element {
                         thead {
                             tr {
                                 th { "ID" }
+                                th { "Service" }
                                 th { "Name" }
                                 th { "Image" }
                                 th { "Status" }
@@ -194,6 +196,7 @@ pub fn Containers() -> Element {
                                     rsx! {
                                         tr {
                                             td { "{c.id}" }
+                                            td { "{c.service}" }
                                             td { "{c.names[0]}" }
                                             td { "{c.image}" }
                                             td { "{c.status}" }

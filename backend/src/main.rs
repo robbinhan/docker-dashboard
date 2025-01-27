@@ -117,7 +117,11 @@ async fn get_containers() -> impl Responder {
         if let Some(labels) = container.labels {
             if let Some(project) = labels.get("com.docker.compose.project") {
                 if let Some(obj) = container_value.as_object_mut() {
-                    obj.insert("service".to_string(), serde_json::Value::String(project.clone()));
+                    obj.insert("Service".to_string(), serde_json::Value::String(project.clone()));
+                }
+            } else {
+                if let Some(obj) = container_value.as_object_mut() {
+                    obj.insert("Service".to_string(), serde_json::Value::String("Unknown".to_string()));
                 }
             }
         }

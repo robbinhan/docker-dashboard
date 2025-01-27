@@ -110,10 +110,24 @@ async fn get_containers() -> impl Responder {
     
     let containers = DOCKER.list_containers(Some(options)).await.map_err(MyError)?;
     
+    // 处理容器数据，添加service字段
+    let mut container_data = Vec::new();
+    for container in containers {
+        let mut container_value = serde_json::to_value(&container)?;
+        if let Some(labels) = container.labels {
+            if let Some(project) = labels.get("com.docker.compose.project") {
+                if let Some(obj) = container_value.as_object_mut() {
+                    obj.insert("service".to_string(), serde_json::Value::String(project.clone()));
+                }
+            }
+        }
+        container_data.push(container_value);
+    }
+    
     Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse{
         message: "Containers List".to_string(),
         docker_info: None,
-        containers: Some(serde_json::to_value(containers)?),
+        containers: Some(serde_json::Value::Array(container_data)),
     }))
 }
 

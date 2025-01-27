@@ -126,11 +126,7 @@ async fn main() -> std::io::Result<()> {
         .expect("PORT must be a valid number");
         
     HttpServer::new(|| {
-        let cors = Cors::default()
-              .allowed_origin("http://127.0.0.1:8080")
-              .allowed_methods(vec!["GET", "POST"])
-              .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-               .max_age(3600);
+        let cors = Cors::default().allow_any_origin();
         App::new()
             .wrap(cors)
             .route("/", web::get().to(hello))

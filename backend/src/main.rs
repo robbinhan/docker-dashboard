@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use actix_web::{web, App, HttpServer, Responder, error::ResponseError, http::StatusCode, http::header};
 use dotenv::dotenv;
 use std::env;
@@ -9,6 +10,51 @@ use std::fmt;
 use std::error::Error as StdError;
 use lazy_static::lazy_static;
 use serde_json;
+use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+use bcrypt::{hash, verify, DEFAULT_COST};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String,
+    exp: usize,
+}
+
+fn create_jwt(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let expiration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as usize + 24 * 3600; // Token有效期24小时
+
+    let claims = Claims {
+        sub: username.to_owned(),
+        exp: expiration,
+    };
+
+    let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes())
+    )
+}
+
+fn verify_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let validation = Validation::new(Algorithm::HS256);
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &validation
+    )?;
+    Ok(token_data.claims)
+}
 
 lazy_static! {
     static ref DOCKER: Docker = {
@@ -135,6 +181,55 @@ async fn get_containers() -> impl Responder {
     }))
 }
 
+#[derive(Debug, Serialize)]
+struct LoginResponse {
+    token: String,
+    message: String,
+}
+
+async fn register(user: web::Json<User>) -> impl Responder {
+    let hashed = hash(user.password.as_bytes(), DEFAULT_COST).unwrap();
+    // TODO: 在实际应用中，这里应该将用户信息存储到数据库
+    Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse {
+        message: "User registered successfully".to_string(),
+        docker_info: None,
+        containers: None,
+    }))
+}
+
+async fn login(user: web::Json<User>) -> impl Responder {
+    // TODO: 在实际应用中，这里应该从数据库验证用户信息
+    // 这里仅作演示，使用固定的用户名和密码
+    if user.username == "admin" && user.password == "password" {
+        let token = create_jwt(&user.username).unwrap();
+        Ok::<web::Json<LoginResponse>, actix_web::Error>(web::Json(LoginResponse {
+            token,
+            message: "Login successful".to_string(),
+        }))
+    } else {
+        Err(actix_web::error::ErrorUnauthorized("Invalid credentials"))
+    }
+}
+
+async fn auth_middleware(req: actix_web::dev::ServiceRequest, next: actix_web::dev::Next) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
+    let auth_header = req.headers().get("Authorization");
+    match auth_header {
+        Some(auth_str) => {
+            let auth_str = auth_str.to_str().unwrap();
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..];
+                match verify_jwt(token) {
+                    Ok(_) => next.call(req).await,
+                    Err(_) => Err(actix_web::error::ErrorUnauthorized("Invalid token"))
+                }
+            } else {
+                Err(actix_web::error::ErrorUnauthorized("Invalid authorization header"))
+            }
+        }
+        None => Err(actix_web::error::ErrorUnauthorized("No authorization header"))
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -144,15 +239,31 @@ async fn main() -> std::io::Result<()> {
         .expect("PORT must be a valid number");
         
     HttpServer::new(|| {
-        let cors = Cors::default().allow_any_origin();
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .expose_headers(&["Authorization"]);
+
+        let auth = actix_web::middleware::Wrap::new(auth_middleware);
+
         App::new()
             .wrap(cors)
-            .route("/", web::get().to(hello))
-            .route("/docker_info", web::get().to(docker_info))
-            .route("/containers", web::get().to(get_containers))
-            .route("/container/{id}/start", web::post().to(start_container))
-            .route("/container/{id}/stop", web::post().to(stop_container)) 
-            .route("/container/{id}/restart", web::post().to(restart_container))
+            .service(
+                web::scope("/auth")
+                    .route("/register", web::post().to(register))
+                    .route("/login", web::post().to(login))
+            )
+            .service(
+                web::scope("")
+                    .wrap(auth)
+                    .route("/", web::get().to(hello))
+                    .route("/docker_info", web::get().to(docker_info))
+                    .route("/containers", web::get().to(get_containers))
+                    .route("/container/{id}/start", web::post().to(start_container))
+                    .route("/container/{id}/stop", web::post().to(stop_container)) 
+                    .route("/container/{id}/restart", web::post().to(restart_container))
+            )
     })
     .bind(("0.0.0.0", port))?
     .run()

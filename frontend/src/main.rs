@@ -8,8 +8,20 @@ use chrono::{DateTime, Utc};
 use web_sys::console;
 use dotenv::dotenv;
 
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct LoginResponse {
+    token: String,
+    message: String,
+}
+
 fn get_api_url(path: &str) -> String {
-    let base_url = env::var("API_BASE_URL");
+    let base_url = env::var("API_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".to_string());
     format!("{}{}", base_url, path)
 }
 
@@ -48,7 +60,72 @@ enum Route {
     #[route("/docker-info")]
     DockerInfo {},
     #[route("/containers")]
-    Containers {}
+    Containers {},
+    #[route("/login")]
+    Login {}
+}
+
+#[component]
+fn Login() -> Element {
+    let username = use_signal(|| String::new());
+    let password = use_signal(|| String::new());
+    let error = use_signal(|| String::new());
+    let navigator = use_navigator();
+
+    let handle_login = move |_| async move {
+        let user = User {
+            username: username.get().to_string(),
+            password: password.get().to_string(),
+        };
+
+        match reqwest::Client::new()
+            .post(get_api_url("/auth/login"))
+            .json(&user)
+            .send()
+            .await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        if let Ok(login_response) = response.json::<LoginResponse>().await {
+                            // 存储token
+                            web_sys::window()
+                                .unwrap()
+                                .local_storage()
+                                .unwrap()
+                                .unwrap()
+                                .set_item("token", &login_response.token)
+                                .unwrap();
+                            navigator.push(Route::DockerInfo {});
+                        }
+                    } else {
+                        error.set("Invalid credentials".to_string());
+                    }
+                }
+                Err(_) => error.set("Login failed".to_string()),
+        }
+    };
+
+    rsx! {
+        div { class: "login-container",
+            h2 { "Login" }
+            div { class: "login-form",
+                input {
+                    placeholder: "Username",
+                    value: username.get(),
+                    oninput: move |e| username.set(e.value.clone())
+                }
+                input {
+                    r#type: "password",
+                    placeholder: "Password",
+                    value: password.get(),
+                    oninput: move |e| password.set(e.value.clone())
+                }
+                button { onclick: handle_login, "Login" }
+                if !error.get().is_empty() {
+                    p { class: "error", "{error}" }
+                }
+            }
+        }
+    }
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");

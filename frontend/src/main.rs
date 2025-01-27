@@ -9,7 +9,7 @@ use web_sys::console;
 use dotenv::dotenv;
 
 fn get_api_url(path: &str) -> String {
-    let base_url = env!("API_BASE_URL");
+    let base_url = env::var("API_BASE_URL");
     format!("{}{}", base_url, path)
 }
 

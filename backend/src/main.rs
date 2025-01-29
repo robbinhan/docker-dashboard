@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use actix_web::{web, App, HttpServer, Responder, error::ResponseError, http::StatusCode, http::header};
+use actix_web::{body::{BoxBody, MessageBody}, error::ResponseError, http::{header, StatusCode}, middleware::{from_fn, Logger, Next}, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use std::env;
 use actix_cors::Cors;
@@ -13,6 +13,7 @@ use serde_json;
 use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use std::time::{SystemTime, UNIX_EPOCH};
+use env_logger::Env;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct User {
@@ -187,15 +188,15 @@ struct LoginResponse {
     message: String,
 }
 
-async fn register(user: web::Json<User>) -> impl Responder {
-    let hashed = hash(user.password.as_bytes(), DEFAULT_COST).unwrap();
-    // TODO: 在实际应用中，这里应该将用户信息存储到数据库
-    Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse {
-        message: "User registered successfully".to_string(),
-        docker_info: None,
-        containers: None,
-    }))
-}
+// async fn register(user: web::Json<User>) -> impl Responder {
+//     let hashed = hash(user.password.as_bytes(), DEFAULT_COST).unwrap();
+//     // TODO: 在实际应用中，这里应该将用户信息存储到数据库
+//     Ok::<web::Json<ApiResponse>, actix_web::Error>(web::Json(ApiResponse {
+//         message: "User registered successfully".to_string(),
+//         docker_info: None,
+//         containers: None,
+//     }))
+// }
 
 async fn login(user: web::Json<User>) -> impl Responder {
     // TODO: 在实际应用中，这里应该从数据库验证用户信息
@@ -211,7 +212,7 @@ async fn login(user: web::Json<User>) -> impl Responder {
     }
 }
 
-async fn auth_middleware(req: actix_web::dev::ServiceRequest, next: actix_web::dev::Next) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
+async fn auth_middleware(req: actix_web::dev::ServiceRequest, next: Next<BoxBody>) -> Result<actix_web::dev::ServiceResponse, actix_web::Error> {
     let auth_header = req.headers().get("Authorization");
     match auth_header {
         Some(auth_str) => {
@@ -237,26 +238,31 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|_| "8081".to_string())
         .parse::<u16>()
         .expect("PORT must be a valid number");
+
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
         
     HttpServer::new(|| {
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()
-            .allow_any_header()
-            .expose_headers(&["Authorization"]);
+            .allow_any_header();
+            // .expose_headers(&["Authorization"]);
 
-        let auth = actix_web::middleware::Wrap::new(auth_middleware);
+        // let auth = actix_web::middleware::Wrap::new(auth_middleware);
 
         App::new()
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
             .wrap(cors)
             .service(
                 web::scope("/auth")
-                    .route("/register", web::post().to(register))
+                    // .route("/register", web::post().to(register))
                     .route("/login", web::post().to(login))
             )
             .service(
                 web::scope("")
-                    .wrap(auth)
+                    .wrap(from_fn(auth_middleware))
                     .route("/", web::get().to(hello))
                     .route("/docker_info", web::get().to(docker_info))
                     .route("/containers", web::get().to(get_containers))

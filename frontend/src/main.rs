@@ -1,12 +1,12 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use std::env;
 
 use dioxus::prelude::*;
 use reqwest;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, TimeZone, Utc};
-use web_sys::console;
-use dotenv::dotenv;
+// use web_sys::console;
+// use dotenv::dotenv;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct User {
@@ -21,8 +21,17 @@ struct LoginResponse {
 }
 
 fn get_api_url(path: &str) -> String {
-    let base_url = env::var("API_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".to_string());
-    format!("{}{}", base_url, path)
+    if let Some(stored_url) = web_sys::window()
+    .unwrap()
+    .local_storage()
+    .unwrap()
+    .and_then(|ls| ls.get_item("api_base_url").unwrap()){
+        format!("{}{}", stored_url, path)
+    }else {
+        format!("{}", path)
+    }
+    // let base_url = env::var("API_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".to_string());
+    // format!("{}{}", base_url, path)
 }
 
 #[derive(Serialize, Deserialize, Debug,Clone)]
@@ -56,14 +65,71 @@ struct ApiResponse {
 #[rustfmt::skip]
 enum Route {
     #[layout(Navbar)]
-    #[route("/")]
     #[route("/docker-info")]
     DockerInfo {},
     #[route("/containers")]
     Containers {},
     #[route("/login")]
-    Login {}
+    Login {},
+    #[route("/")]
+    #[route("/settings")]
+    Settings {}
 }
+
+#[component]
+fn Settings() -> Element {
+    let mut base_url_signal = use_signal(|| String::from("http://localhost:8081"));
+    let mut error = use_signal(|| String::new());
+
+    // Load base URL from local storage on component mount
+    use_effect(move || {
+        if let Some(stored_url) = web_sys::window()
+            .unwrap()
+            .local_storage()
+            .unwrap()
+            .and_then(|ls| ls.get_item("api_base_url").unwrap())
+        {
+            base_url_signal.set(stored_url);
+        }
+        // async {}
+    });
+
+    let save_base_url = move |_| {
+        let base_url = base_url_signal.to_string();
+        if base_url.is_empty() {
+            error.set("Base URL cannot be empty".to_string());
+        } else {
+            web_sys::window()
+                .unwrap()
+                .local_storage()
+                .unwrap()
+                .unwrap()
+                .set_item("api_base_url", &base_url)
+                .unwrap();
+            error.set("Base URL saved successfully".to_string());
+        }
+    };
+
+    rsx! {
+        div { class: "settings-container",
+            h2 { "Settings" }
+            div { class: "settings-form",
+                label { "Base URL:" }
+                input {
+                    r#type: "url",
+                    placeholder: "http://localhost:8081",
+                    value: "{base_url_signal}",
+                    oninput: move |e| base_url_signal.set(e.value().clone())
+                }
+                button { onclick: save_base_url, "Save" }
+                if !error().is_empty() {
+                    p { class: "error", "{error}" }
+                }
+            }
+        }
+    }
+}
+
 
 #[component]
 fn Login() -> Element {
@@ -132,7 +198,7 @@ const CONTAINERS_CSS: Asset = asset!("/assets/styling/containers.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 fn main() {
-    dotenv().ok();
+    // dotenv().ok();
     dioxus::launch(App);
 }
 
@@ -161,6 +227,10 @@ fn Navbar() -> Element {
             Link {
                 to: Route::Containers {},
                 "Containers"
+            }
+            Link {
+                to: Route::Settings {},
+                "Settings"
             }
         }
         Outlet::<Route> {}
@@ -231,13 +301,21 @@ pub fn Containers() -> Element {
     //     }
     // }
 
-    let  start_container = move |id:String| async move {
-        let _ = reqwest::Client::new()
-            .post(get_api_url(&format!("/container/{}/start", id)))
-            .send()
-            .await;
-        get_containers.restart();
+    let start_container = move |id:String| {
+            return async move {
+                let _ = reqwest::Client::new()
+                    .post(get_api_url(&format!("/container/{}/start", id)))
+                    .send()
+                    .await;
+                get_containers.restart();
+        }
     };
+
+    // async {
+    //     let a = start_container("aa".to_string());
+    //     a.await;
+    // };
+   
 
     let  stop_container = move |id:String| async move {
         let _ = reqwest::Client::new()
@@ -286,7 +364,7 @@ pub fn Containers() -> Element {
                                             td { 
                                                 div { class: "operation-buttons",
                                                     button { 
-                                                        onclick: move |_| start_container(c_id.to_string()) ,
+                                                        onclick: move |_| start_container(c_id.clone()) ,
                                                         id: "button-start",
                                                         class: "operation-button",
                                                         name: "Start",
@@ -294,7 +372,7 @@ pub fn Containers() -> Element {
                                                         " Start"
                                                     },
                                                     button { 
-                                                        onclick: move |_| stop_container(c_id2.to_string()) ,
+                                                        onclick: move |_| stop_container(c_id2.clone()) ,
                                                         class: "operation-button",
                                                         name: "Stop",
                                                         i { class: "bi bi-stop-fill" }

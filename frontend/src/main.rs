@@ -195,11 +195,52 @@ fn Login() -> Element {
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const CONTAINERS_CSS: Asset = asset!("/assets/styling/containers.css");
-const HEADER_SVG: Asset = asset!("/assets/header.svg");
+// const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 fn main() {
     // dotenv().ok();
     dioxus::launch(App);
+}
+
+#[component]
+fn Navbar() -> Element {
+    let mut show_drawer = use_signal(|| true);
+
+    let toggle_drawer = move |_| {
+        show_drawer.set(!show_drawer());
+    };
+
+    rsx! {
+        div {
+            id: "navbar",
+            button {
+                onclick: toggle_drawer,
+                "Drawer"
+            }
+            if show_drawer() {
+                div {
+                    class: "drawer",
+                    Link {
+                        to: Route::DockerInfo {},
+                        "Docker Info"
+                    }
+                    Link {
+                        to: Route::Containers {},
+                        "Containers"
+                    }
+                    // Link {
+                    //     to: Route::Login {},
+                    //     "Login"
+                    // }
+                    Link {
+                        to: Route::Settings {},
+                        "Settings"
+                    }
+                }
+            }
+        }
+        Outlet::<Route> {}
+    }
 }
 
 #[component]
@@ -210,30 +251,6 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: CONTAINERS_CSS }
         document::Link { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" }
         Router::<Route> {}
-    }
-}
-
-
-
-#[component]
-fn Navbar() -> Element {
-    rsx! {
-        div {
-            id: "navbar",
-            Link {
-                to: Route::DockerInfo {},
-                "Docker Info"
-            }
-            Link {
-                to: Route::Containers {},
-                "Containers"
-            }
-            Link {
-                to: Route::Settings {},
-                "Settings"
-            }
-        }
-        Outlet::<Route> {}
     }
 }
 
@@ -280,7 +297,7 @@ pub fn Containers() -> Element {
             .await
             .unwrap();
 
-            let aaa = response.containers.map(|a| { 
+            let aaa = response.containers.map(|a| {
                 return a.iter().map(|x| {
                     // let datetime: DateTime<Utc> = DateTime::from_timestamp(x.created, 0).unwrap();
                     return Container{
@@ -289,7 +306,7 @@ pub fn Containers() -> Element {
                     ..x.clone()
                     };
                 }).collect::<Vec<Container>>();
-                
+
             });
             // containers.set(aaa);
             return aaa;
@@ -315,7 +332,7 @@ pub fn Containers() -> Element {
     //     let a = start_container("aa".to_string());
     //     a.await;
     // };
-   
+
 
     let  stop_container = move |id:String| async move {
         let _ = reqwest::Client::new()
@@ -361,9 +378,9 @@ pub fn Containers() -> Element {
                                             td { "{c.image}" }
                                             td { "{c.status}" }
                                             td { "{created_datetime}" }
-                                            td { 
+                                            td {
                                                 div { class: "operation-buttons",
-                                                    button { 
+                                                    button {
                                                         onclick: move |_| start_container(c_id.clone()) ,
                                                         id: "button-start",
                                                         class: "operation-button",
@@ -371,7 +388,7 @@ pub fn Containers() -> Element {
                                                         i { class: "bi bi-play-fill" }
                                                         " Start"
                                                     },
-                                                    button { 
+                                                    button {
                                                         onclick: move |_| stop_container(c_id2.clone()) ,
                                                         class: "operation-button",
                                                         name: "Stop",

@@ -44,29 +44,184 @@ body {
 
 /* Navbar */
 #navbar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 200px;
+    height: 100%;
+    background-color: #1f1f1f;
+    padding-top: 20px;
     display: flex;
-    flex-direction: row;
-  }
-  
-#navbar a {
-    color: #ffffff;
-    margin-right: 20px;
+    flex-direction: column;
+    align-items: flex-start; /* Align items to the start of the container */
+}
+
+#navbar button {
+    background: none;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    text-align: left;
     text-decoration: none;
-    transition: color 0.2s ease;
-}
-
-#navbar a:hover {
+    display: inline-block;
+    font-size: 16px;
     cursor: pointer;
-    color: #91a4d2;
+    width: 100%;
+    transition: background-color 0.3s;
 }
 
-/* Blog page */
-#blog {
-    margin-top: 50px;
-  }
-  
-#blog a {
+#navbar button:hover {
+    background-color: #2f2f2f;
+}
+
+
+.drawer {
+    width: 200px;
+    height: auto; /* Adjust height as needed */
+    background-color: #1f1f1f;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    position: static; /* Keep it static within the navbar */
+}
+
+.drawer a {
     color: #ffffff;
-    margin-top: 50px;
+    padding: 10px 15px;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    border-left: 5px solid transparent;
+    display: block; /* Make each link a block element */
+    width: 100%; /* Full width within the drawer */
+    text-align: left; /* Align text to the left */
 }
 
+.drawer a:hover,
+.drawer a.active {
+    background-color: #2f2f2f;
+    border-left-color: #91a4d2;
+    cursor: pointer;
+}
+
+
+/* Adjust main content to accommodate the drawer */
+body {
+    margin-left: 220px;
+}
+
+
+/* Existing styles - keep these as they are */
+/* App-wide styling */
+/* body, #hero, #links, #links a, #header, #navbar styles... */
+/* ... rest of your CSS ... */
+/* App-wide styling */
+body {
+    background-color: #0f1116;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+}
+
+#hero {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#links {
+    width: 400px;
+    text-align: left;
+    font-size: x-large;
+    color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+#links a {
+    color: white;
+    text-decoration: none;
+    margin-top: 20px;
+    margin: 10px 0px;
+    border: white 1px solid;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+#links a:hover {
+    background-color: #1f1f1f;
+    cursor: pointer;
+}
+
+#header {
+    max-width: 1200px;
+}
+
+/* Navbar */
+#navbar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 200px;
+    height: 100%;
+    background-color: #1f1f1f;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align items to the start of the container */
+}
+
+#navbar button {
+    background: none;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    text-align: left;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.3s;
+}
+
+#navbar button:hover {
+    background-color: #2f2f2f;
+}
+
+
+.drawer {
+    width: 200px;
+    height: auto; /* Adjust height as needed */
+    background-color: #1f1f1f;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    position: static; /* Keep it static within the navbar */
+}
+
+.drawer a {
+    color: #ffffff;
+    padding: 10px 15px;
+    text-align: left;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    border-left: 0px solid transparent;
+    display: block; /* Make each link a block element */
+    width: 100%; /* Full width within the drawer */
+    text-align: left; /* Align text to the left */
+}
+
+.drawer a:hover,
+.drawer a.active {
+    background-color: #2f2f2f;
+    border-left-color: #91a4d2;
+    cursor: pointer;
+}
+
+
+/* Adjust main content to accommodate the drawer */
+body {
+    margin-left: 220px;
+}

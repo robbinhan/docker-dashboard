@@ -72,14 +72,45 @@ enum Route {
     #[route("/")]
     #[route("/login")]
     Login {},
-    #[route("/settings")]
-    Settings {}
+    // #[route("/settings")]
+    // Settings {}
 }
 
 #[component]
-fn Settings() -> Element {
+fn Settings(base_url_signal: Signal<String>) -> Element {
+    rsx! {
+        div { class: "settings-container",
+            // h2 { "Settings" }
+            div { class: "row g-3 align-items-center",
+                div{ class: "col-auto",
+                    label { "Base URL:" }
+                }
+                div{ class: "col-auto",
+                    input {
+                        class: "form-control",
+                        r#type: "url",
+                        placeholder: "http://localhost:8081",
+                        value: "{base_url_signal}",
+                        oninput: move |e| base_url_signal.set(e.value().clone())
+                    }
+                }
+                // button { onclick: save_base_url, "Save", class: "btn btn-dark"}
+                // if !error().is_empty() {
+                //     p { class: "error", "{error}" }
+                // }
+            }
+        }
+    }
+}
+
+
+#[component]
+fn Login() -> Element {
     let mut base_url_signal = use_signal(|| String::from("http://localhost:8081"));
+    let mut username = use_signal(|| String::new());
+    let mut password = use_signal(|| String::new());
     let mut error = use_signal(|| String::new());
+    let navigator = use_navigator();
 
     // Load base URL from local storage on component mount
     use_effect(move || {
@@ -93,8 +124,10 @@ fn Settings() -> Element {
         }
         // async {}
     });
+    
 
-    let save_base_url = move |_| {
+
+    let mut save_base_url = move |_| {
         let base_url = base_url_signal.to_string();
         if base_url.is_empty() {
             error.set("Base URL cannot be empty".to_string());
@@ -110,35 +143,8 @@ fn Settings() -> Element {
         }
     };
 
-    rsx! {
-        div { class: "settings-container",
-            h2 { "Settings" }
-            div { class: "settings-form",
-                label { "Base URL:" }
-                input {
-                    r#type: "url",
-                    placeholder: "http://localhost:8081",
-                    value: "{base_url_signal}",
-                    oninput: move |e| base_url_signal.set(e.value().clone())
-                }
-                button { onclick: save_base_url, "Save" }
-                if !error().is_empty() {
-                    p { class: "error", "{error}" }
-                }
-            }
-        }
-    }
-}
-
-
-#[component]
-fn Login() -> Element {
-    let mut username = use_signal(|| String::new());
-    let mut password = use_signal(|| String::new());
-    let mut error = use_signal(|| String::new());
-    let navigator = use_navigator();
-
-    let handle_login = move |_| async move {
+    let handle_login = move |evt| async move {
+        save_base_url(evt);
         let user = User {
             username: username(),
             password: password(),
@@ -171,19 +177,22 @@ fn Login() -> Element {
     rsx! {
         div { class: "login-container",
             h2 { "Login" }
+            Settings {base_url_signal:base_url_signal}
             div { class: "login-form",
                 input {
+                    class: "form-control",
                     placeholder: "Username",
                     value: "{username}",
                     oninput: move |e| username.set(e.value().clone())
                 }
                 input {
+                    class: "form-control",
                     r#type: "password",
                     placeholder: "Password",
                     value: "{password}",
                     oninput: move |e| password.set(e.value().clone())
                 }
-                button { onclick: handle_login, "Login" }
+                button { onclick: handle_login, class: "btn btn-primary", "Login" }
                 if !error().is_empty() {
                     p { class: "error", "{error}" }
                 }
@@ -232,10 +241,10 @@ fn Navbar() -> Element {
                     //     to: Route::Login {},
                     //     "Login"
                     // }
-                    Link {
-                        to: Route::Settings {},
-                        "Settings"
-                    }
+                    // Link {
+                    //     to: Route::Settings {},
+                    //     "Settings"
+                    // }
                 }
             }
         }
@@ -250,6 +259,7 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: CONTAINERS_CSS }
         document::Link { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" }
+        document::Link {rel : "stylesheet", href:"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"}
         Router::<Route> {}
     }
 }
@@ -258,7 +268,13 @@ fn App() -> Element {
 pub fn DockerInfo() -> Element {
     let mut contents = use_signal(|| "".to_string());
     let get_docker_info = move |_| async move {
-        let response = reqwest::get(get_api_url("/docker_info"))
+         // 获取token
+         let token = web_sys::window()
+         .unwrap()
+         .local_storage().unwrap().unwrap()
+         .get_item("token")
+         .unwrap().unwrap();
+        let response = reqwest::Client::new().get(get_api_url("/docker_info")).bearer_auth(token).send()
             .await
             .unwrap()
             .json::<ApiResponse>()
@@ -274,14 +290,18 @@ pub fn DockerInfo() -> Element {
 
     rsx! {
         div {
-            "Docker Info: "
-            pre {
-                "{contents}"
+            class:"container",
+            div {
+            
+                "Docker Info: "
+                pre {
+                    "{contents}"
+                }
             }
-        }
-        button {
-            onclick: get_docker_info,
-            "Get Docker Info"
+            button {
+                onclick: get_docker_info,
+                "Get Docker Info"
+            }
         }
     }
 }
@@ -290,7 +310,13 @@ pub fn DockerInfo() -> Element {
 pub fn Containers() -> Element {
     // let mut containers = use_signal(|| None as Option<Vec<Container>>);
     let mut get_containers = use_resource(move|| async move {
-        let  response = reqwest::get(get_api_url("/containers"))
+        // 获取token
+        let token = web_sys::window()
+        .unwrap()
+        .local_storage().unwrap().unwrap()
+        .get_item("token")
+        .unwrap().unwrap();
+        let  response = reqwest::Client::new().get(get_api_url("/containers")).bearer_auth(token).send()
             .await
             .unwrap()
             .json::<ApiResponse>()
@@ -319,9 +345,15 @@ pub fn Containers() -> Element {
     // }
 
     let start_container = move |id:String| {
+            // 获取token
+            let token = web_sys::window()
+            .unwrap()
+            .local_storage().unwrap().unwrap()
+            .get_item("token")
+            .unwrap().unwrap();
             return async move {
                 let _ = reqwest::Client::new()
-                    .post(get_api_url(&format!("/container/{}/start", id)))
+                    .post(get_api_url(&format!("/container/{}/start", id))).bearer_auth(token)
                     .send()
                     .await;
                 get_containers.restart();
@@ -335,8 +367,14 @@ pub fn Containers() -> Element {
 
 
     let  stop_container = move |id:String| async move {
+        // 获取token
+        let token = web_sys::window()
+        .unwrap()
+        .local_storage().unwrap().unwrap()
+        .get_item("token")
+        .unwrap().unwrap();
         let _ = reqwest::Client::new()
-            .post(format!("http://127.0.0.1:8081/container/{}/stop", id))
+            .post(format!("http://127.0.0.1:8081/container/{}/stop", id)).bearer_auth(token)
             .send()
             .await;
         get_containers.restart();
@@ -383,14 +421,14 @@ pub fn Containers() -> Element {
                                                     button {
                                                         onclick: move |_| start_container(c_id.clone()) ,
                                                         id: "button-start",
-                                                        class: "operation-button",
+                                                        class: "btn btn-primary",
                                                         name: "Start",
                                                         i { class: "bi bi-play-fill" }
                                                         " Start"
                                                     },
                                                     button {
                                                         onclick: move |_| stop_container(c_id2.clone()) ,
-                                                        class: "operation-button",
+                                                        class: "btn btn-danger",
                                                         name: "Stop",
                                                         i { class: "bi bi-stop-fill" }
                                                         " Stop"

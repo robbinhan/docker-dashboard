@@ -114,7 +114,7 @@ body {
     max-width: 400px;
     margin: 100px auto;
     padding: 2rem;
-    background: #1a1c22;
+    background: #f8f8f8;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -315,4 +315,8 @@ body {
 /* Adjust main content to accommodate the drawer */
 body {
     margin-left: 220px;
+}
+
+.settings-container {
+    margin: 20px auto;
 }

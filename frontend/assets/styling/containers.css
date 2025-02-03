@@ -9,7 +9,7 @@
     margin-bottom: 20px;
 }
 
-.container-list button {
+/* .container-list button {
     background-color: #91a4d2;
     color: #0f1116;
     padding: 10px 20px;
@@ -18,7 +18,7 @@
     cursor: pointer;
     margin-bottom: 20px;
     transition: background-color 0.2s ease;
-}
+} */
 
 .container-list button:hover {
     background-color: #6d7fa5;
@@ -33,7 +33,7 @@
 .container-table td {
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid #2d2f36;
+    border-bottom: 1px solid #ffffff;
 }
 
 .container-table th {
@@ -43,16 +43,16 @@
 }
 
 .container-table tr:hover {
-    background-color: #2d2f36;
+    background-color: #5979ef;
 }
 
 .container-table td {
-    color: #d1d1d1;
+    color: #000000;
 }
 
 .container-table td:first-child {
     font-family: monospace;
-    color: #91a4d2;
+    color: #e0af45;
 }
 
 /* Operation buttons */

@@ -69,9 +69,9 @@ enum Route {
     DockerInfo {},
     #[route("/containers")]
     Containers {},
+    #[route("/")]
     #[route("/login")]
     Login {},
-    #[route("/")]
     #[route("/settings")]
     Settings {}
 }
